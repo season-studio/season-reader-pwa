@@ -1,0 +1,3 @@
+[submodule "thirdpart/toolkits"]
+	path = thirdpart/toolkits
+	url = https://github.com/season-studio/toolkits.js.git

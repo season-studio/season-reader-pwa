@@ -1,0 +1,42 @@
+.contextView{
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--content-bg-color);
+    color: var(--content-text-color);
+    z-index: 999;
+
+    :global(.context-content) {
+        padding: 0.5em;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        overflow: auto;
+    }
+    
+    :global(.context-bar) {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        background-color: var(--bar-bg-color);
+        color: var(--bar-text-color);
+
+        :global(.context-button) {
+            padding: 1em;
+        }
+    }
+
+    :global(.context-item) {
+        box-sizing: border-box;
+        border: 0;
+        border-bottom: dashed 1px var(--shadow-color-heavy);
+        padding: 0.5em 0;
+        font-size: 1.1em;
+    }
+}

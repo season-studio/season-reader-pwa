@@ -1,0 +1,94 @@
+html {
+    font-size: 100%;
+}
+body {
+    --shadow-color: #bbb;
+    --shadow-color-heavy: #999;
+    --shadow-color-strong: #777;
+    --global-font-family: -apple-system, Roboto, SegoeUI, 'Segoe UI', 'Helvetica Neue', Helvetica, 'Microsoft YaHei', 'Meiryo UI', Meiryo, Arial Unicode MS, sans-serif;
+    --global-font-weight: 400;
+    --global-bg-color: #f3e3c3;
+    --content-bg-color: #f3e3c3;
+    --content-text-color: #000;
+    --content-view-width: 100vw;
+    --content-view-height: 100vh;
+
+    --bar-bg-color: #666;
+    --bar-text-color: #fff;
+    --char-perline-portrait: 46;
+    --char-perline-landscape: 92;
+
+    --safe-left: 0;
+    --safe-right: 0;
+    --safe-top: 0;
+    --safe-bottom: 0;
+
+    font-weight: var(--global-font-weight);
+    margin: 0 0 0 0;
+    background-color: var(--global-bg-color);
+}
+@supports (top: constant(safe-area-inset-top)) or (top: env(safe-area-inset-top)) {
+    body {
+        --safe-left: constant(safe-area-inset-left);
+        --safe-left: env(safe-area-inset-left);
+        --safe-right: constant(safe-area-inset-right);
+        --safe-right: env(safe-area-inset-right);
+        --safe-top: constant(safe-area-inset-top);
+        --safe-top: env(safe-area-inset-top);
+        --safe-bottom: constant(safe-area-inset-bottom);
+        --safe-bottom: env(safe-area-inset-bottom);
+    }
+}
+@media screen and (orientation:portrait) {
+    html,body {
+        font-size: calc(100vw / var(--char-perline-portrait) * 2) !important;
+        --content-char-perline: var(--char-perline-portrait);
+    }
+}
+@media screen and (orientation:landscape) {
+    html,body {
+        font-size: calc(100vw / var(--char-perline-landscape) * 2) !important;
+        --content-char-perline: var(--char-perline-landscape);
+    }
+}
+body * {
+    font-family: var(--global-font-family);
+}
+.app {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: auto;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.scroll-view {
+    flex-grow: 1;
+    overflow: auto;
+    position: relative;
+    z-index: 100;
+}
+.content-box {
+    display: block;
+    padding: 0.5em;
+    box-sizing: border-box;
+    min-height: 100%;
+    margin: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+    z-index: 100;
+    position: relative;
+    color: var(--content-text-color);
+    background-color: var(--content-bg-color);
+    font-size: calc(var(--content-view-width) / var(--content-char-perline) * 2);
+}
+.bottom-bar {
+    display: inline-block;
+    padding: 0.5em 0;
+    background-color: var(--bar-bg-color);
+    color: var(--bar-text-color);
+    border: 0;
+    text-align: center;
+}
