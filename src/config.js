@@ -1,7 +1,7 @@
 export const DBConfiguration = {
     Name: "snsq",
     Configuration: {
-        version: 1,
+        version: 17,
         stores: {
             configuration: {
                 keyPath: ["key"]
@@ -10,10 +10,7 @@ export const DBConfiguration = {
                 keyPath: ["key"]
             },
             snsq: {
-                keyPath: ["datetime"],
-                indexs: {
-                    main: "datetime"
-                }
+                keyPath: ["datetime"]
             },
             plugins: {
                 keyPath: ["key"]

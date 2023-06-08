@@ -56,6 +56,10 @@ async function refresh() {
     location.reload();
 }
 
+function fresh() {
+    location.reload();
+}
+
 class ReaderApp extends React.Component {
 
     #contentShadowRoot;
@@ -83,6 +87,13 @@ class ReaderApp extends React.Component {
         PluginManager.registryFunction("hide on", hideOn);
         PluginManager.registryFunction("hide off", hideOff);
         PluginManager.registryFunction("refresh", refresh);
+        PluginManager.registryFunction("fresh", fresh);
+        PluginManager.registryFunction("resize", () => {
+            let contentRect = $contentView?.parentElement?.getBoundingClientRect();
+            if (contentRect) {
+                this.onResizeObserser([{ contentRect }]);
+            }
+        });
 
         window.FelisDB = FelisDB;
         window.ZipLib = ZipLib;

@@ -42,6 +42,7 @@ export const PluginManager = Object.seal({
 
                 let indexScript = entries.find(e => e?.name === "index");
                 if (indexScript && _pluginName) {
+                    await this.uninstall(_pluginName);
                     indexScript = await indexScript.getText(null, zipOpt);
                     let store = theDB.accessStore("plugins", "rw");
                     try {
@@ -81,7 +82,7 @@ export const PluginManager = Object.seal({
     async uninstall(_pluginName) {
         try {
             let obj = PluginObjects[_pluginName];
-            let ret = obj.uninstall?.call(obj);
+            let ret = obj?.uninstall?.call(obj);
             if (ret instanceof Promise) {
                 await ret;
             }
