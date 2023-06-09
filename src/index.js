@@ -60,6 +60,12 @@ function fresh() {
     location.reload();
 }
 
+function clearDB() {
+    let r = indexedDB.deleteDatabase(Configuration.DBConfiguration.Name); 
+    r.onsuccess = () => tip("Done", {type:"warn"}); 
+    r.onerror = () => tip("fail_clr_db", {type:"error"});
+}
+
 class ReaderApp extends React.Component {
 
     #contentShadowRoot;
@@ -94,6 +100,7 @@ class ReaderApp extends React.Component {
                 this.onResizeObserser([{ contentRect }]);
             }
         });
+        PluginManager.registryFunction("$snsq", clearDB);
 
         window.FelisDB = FelisDB;
         window.ZipLib = ZipLib;
@@ -147,6 +154,10 @@ class ReaderApp extends React.Component {
             oriStyles.push(`--content-view-width: ${entry.contentRect.width}`);
             oriStyles.push(`--content-view-height: ${entry.contentRect.height}`);
             document.body?.setAttribute("style", oriStyles.join(";"));
+            if ($contentView) {
+                $contentView.style.display = "none";
+                setImmediate(() => ($contentView.style.display = ""));
+            }
         }
     }
 
