@@ -151,7 +151,7 @@ class ReaderApp extends React.Component {
         if (audio) {
             audio.src = brownNoice;
             audio.load();
-            audio.addEventListener("pause", () => this.#speakAction?.stop());
+            audio.addEventListener("pause", console.log);//() => this.#speakAction?.stop());
         }
         PluginManager.loadAll().then(() => console.log("Plugins loaded"));
     }
@@ -425,7 +425,7 @@ class ReaderApp extends React.Component {
                 let scrollView = $contentView?.parentElement;
                 if (scrollView) {
                     let { top, height } = range.getBoundingClientRect();
-                    let { cHeight } = scrollView.getBoundingClientRect();
+                    let { height: cHeight } = scrollView.getBoundingClientRect();
                     ((top < 0) || (top >= cHeight) || (top + height > cHeight)) && (scrollView.scrollTop += top);
                 }
                 let selection = document.getSelection();
