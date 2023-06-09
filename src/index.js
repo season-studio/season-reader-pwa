@@ -14,6 +14,7 @@ import { BookShelf, BookShelfView } from "./components/bookshelf";
 import { ContextView } from "./components/contextView";
 import { SpeakerSelector } from "./components/speakerSelector";
 import { PluginManager } from "./components/pluginManager";
+import { brownNoice } from "./backgroundSound";
 
 const SpeakTextSplitor = /[,\."\?\!，。‘’“”？！…—\:：\n]/;
 const SpeakWatchDogOverflow = 9;
@@ -66,6 +67,10 @@ function clearDB() {
     r.onerror = () => tip("fail_clr_db", {type:"error"});
 }
 
+function test() {
+    tip("test", {type:"info", timeout:3000, closable:true});
+}
+
 class ReaderApp extends React.Component {
 
     #contentShadowRoot;
@@ -86,6 +91,7 @@ class ReaderApp extends React.Component {
         };
 
         this.contentBox = React.createRef();
+        this.audioHolder = React.createRef();
         this.ebook = new EBook();
 
         this.#observer = new ResizeObserver((e) => this.onResizeObserser(e));
@@ -101,6 +107,8 @@ class ReaderApp extends React.Component {
             }
         });
         PluginManager.registryFunction("$snsq", clearDB);
+        
+        PluginManager.registryFunction("test", test);
 
         window.FelisDB = FelisDB;
         window.ZipLib = ZipLib;
@@ -139,6 +147,12 @@ class ReaderApp extends React.Component {
                 });
             });
         }
+        let audio = (window.$audioHolder = this.audioHolder.current);
+        if (audio) {
+            audio.src = brownNoice;
+            audio.load();
+            audio.addEventListener("pause", () => this.#speakAction?.stop());
+        }
         PluginManager.loadAll().then(() => console.log("Plugins loaded"));
     }
 
@@ -155,8 +169,12 @@ class ReaderApp extends React.Component {
             oriStyles.push(`--content-view-height: ${entry.contentRect.height}`);
             document.body?.setAttribute("style", oriStyles.join(";"));
             if ($contentView) {
+                let offset = Number($contentView.parentElement?.scrollTop)||0;
                 $contentView.style.display = "none";
-                setImmediate(() => ($contentView.style.display = ""));
+                setImmediate(() => {
+                    $contentView.style.display = "";
+                    $contentView.parentElement && ($contentView.parentElement.scrollTop = offset);
+                });
             }
         }
     }
@@ -341,6 +359,7 @@ class ReaderApp extends React.Component {
         this.#speakAction?.stop();
         this.#speakAction = undefined;
         this.setState({selectSpeaker:false, inSpeak:false});
+        $audioHolder?.pause();
     }
 
     onStartSpeaker(_speaker) {
@@ -424,6 +443,7 @@ class ReaderApp extends React.Component {
         // _speaker.addEventListener("error", onStop);
         _speaker.addEventListener("boundary", () => watchdog = 0);
         this.#speakAction = speakAction;
+        $audioHolder?.play().then(() => tip("Speaker start", {timeout:500, type:"info"})).catch((err) => tip(`Speaker ${err}`, {type:"warn"}));
         speakAction.speak();
         watchdogTimer = setInterval(() => {
             if (++watchdog > SpeakWatchDogOverflow) {
@@ -479,8 +499,8 @@ class ReaderApp extends React.Component {
         }
     }
 
-    async onMore() {
-        await this.showWaitingInContent("More Coming Soon...");
+    onMore() {
+        this.showWaitingInContent("More Coming Soon...");
         tip("未实现", {type:"warn"});
     }
 
@@ -489,6 +509,7 @@ class ReaderApp extends React.Component {
             <div className="scroll-view" onClick={() => this.setState({showBar: !this.state.showBar})}>
                 <div ref={this.contentBox} className="content-box"></div>
             </div>
+            <audio ref={this.audioHolder} loop style={{display:"none"}}></audio>
             {this.state.inSpeak && <div className="bottom-bar" onClick={() => this.onCloseSpeaker()}>停止朗读</div>}
             {this.state.showBar && 
                 <MainBar 
