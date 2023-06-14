@@ -36,6 +36,40 @@ function hideOff() {
     styleNode?.remove();
 }
 
+function lightOff() {
+    let styleNode = document.querySelector('[d-theme-style="light-off"]');
+    if (!styleNode) {
+        styleNode = document.createElement("style");
+    }
+    if (styleNode) {
+        styleNode.setAttribute("d-theme-style", "light-off");
+        styleNode.innerHTML = "body { --content-text-color: #262626 !important; --content-bg-color: #000 !important; }";
+        document.head?.appendChild(styleNode);
+    }
+}
+
+function lightOn() {
+    let styleNode = document.querySelector('[d-theme-style="light-off"]');
+    styleNode?.remove();
+}
+
+function fontSize(_size) {
+    console.log(this, arguments);
+    let styleNode = document.querySelector('[d-theme-style="font-size"]');``
+    if (_size) {
+        if (!styleNode) {
+            styleNode = document.createElement("style");
+        }
+        if (styleNode) {
+            styleNode.setAttribute("d-theme-style", "font-size");
+            styleNode.innerHTML = `body { font-size: ${_size} !important; } html { font-size: ${_size} !important; }`;
+            document.head?.appendChild(styleNode);
+        }
+    } else {
+        styleNode?.remove();
+    }
+}
+
 async function refresh() {
     let tipObj = undefined;
     try {
@@ -79,6 +113,7 @@ class ReaderApp extends React.Component {
     #scrollBoundary = 0;
     #speakAction;
     #observer;
+    #keyTurnPage;
 
     constructor(_props) {
         super(_props);
@@ -96,6 +131,9 @@ class ReaderApp extends React.Component {
 
         this.#observer = new ResizeObserver((e) => this.onResizeObserser(e));
 
+        PluginManager.registryFunction("font size", fontSize);
+        PluginManager.registryFunction("light on", lightOn);
+        PluginManager.registryFunction("light off", lightOff);
         PluginManager.registryFunction("hide on", hideOn);
         PluginManager.registryFunction("hide off", hideOff);
         PluginManager.registryFunction("refresh", refresh);
@@ -127,14 +165,15 @@ class ReaderApp extends React.Component {
             this.#contentShadowRoot = contentView.attachShadow({mode: "open"});
 
             let parent = contentView.parentElement;
-            if (parent) {
+            if (parent?.parentElement) {
                 this.onResizeObserser([{contentRect: parent.getBoundingClientRect()}]);
-                this.#observer?.observe(parent);
+                this.#observer?.observe(parent.parentElement);
             }
             
             window.addEventListener("get-ebook-password", this.onGetEBookPassword.bind(this));
             window.addEventListener("touchstart", this.onTouchStart.bind(this));
             window.addEventListener("touchend", this.onTouchEnd.bind(this));
+            window.addEventListener("keydown", this.onKeyDown.bind(this));
             window.addEventListener("visibilitychange", async () => {
                 await BookShelf.recordLocation(this.ebook, this.#currentSectionIndex, $contentView?.parentElement?.scrollTop);
             });
@@ -161,6 +200,15 @@ class ReaderApp extends React.Component {
     }
 
     onResizeObserser(_e) {
+        let isPC = !/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
+        if (isPC) {
+            document.documentElement?.setAttribute("d-pc", "true");
+            document.body?.setAttribute("d-pc", "true");
+        } else {
+            document.documentElement?.removeAttribute("d-pc");
+            document.body?.removeAttribute("d-pc");
+        }
+
         let entry = _e?.at(0);
         console.log("Resize", entry);
         if (entry) {
@@ -254,6 +302,40 @@ class ReaderApp extends React.Component {
         this.#scrollBoundary = 0;
     }
 
+    async onKeyDown(e) {
+        let key = String(e.key).toLowerCase();
+        let parent = $contentView?.parentElement;
+        if (parent) {
+            if (key === "arrowdown") {
+                if (parent.scrollTop + parent.clientHeight + 1 >= parent.scrollHeight) {
+                    if (this.#keyTurnPage > 0) {
+                        this.#keyTurnPage = 0;
+                        await this.showNextSection();
+                    } else {
+                        this.#keyTurnPage = 1;
+                        tip("再按一次 ↓ 将翻阅到下一章", {type:"info", timeout:1000});
+                    }
+                } else {
+                    this.#keyTurnPage = 0;
+                }
+            } else if (key === "arrowup") {
+                if (parent.scrollTop === 0) {
+                    if (this.#keyTurnPage > 0) {
+                        this.#keyTurnPage = 0;
+                        await this.showPrevSection();
+                    } else {
+                        this.#keyTurnPage = 1;
+                        tip("再按一次 ↑ 将翻阅到上一章", {type:"info", timeout:1000});
+                    }
+                } else {
+                    this.#keyTurnPage = 0;
+                }
+            } else {
+                this.#keyTurnPage = 0;
+            }
+        }
+    }
+
     async onGetEBookPassword(_event) {
         _event.detail.password = input({
             title: "电子书密码",
@@ -296,6 +378,7 @@ class ReaderApp extends React.Component {
         let newIndex = this.#currentSectionIndex - 1;
         if (newIndex >= 0) {
             await this.showSection(newIndex);
+            setImmediate(() => $contentView.parentElement.scrollTop = $contentView.clientHeight);
         } else {
             tip("已浏览到第一页", {type:"warn"});
         }
@@ -473,20 +556,35 @@ class ReaderApp extends React.Component {
                 await PluginManager.uninstall(code.substring(1));
                 return;
             }
+            let fnName;
+            let fnArgs;
             if (code.startsWith("@")) {
-                let codeHash = await crypto.subtle.digest("SHA-512", (new TextEncoder()).encode(code.substring(1)));
-                codeHash = new Uint8Array(codeHash);
-                let fn = PluginManager.queryFunction(codeHash);
-                if (typeof fn === "function") {
-                    fn();
-                    return;
+                fnName = code.substring(1);
+                let argsStart = fnName.indexOf("#");
+                if (argsStart > 0) {
+                    fnArgs = fnName.substring(argsStart + 1);
+                    fnName = fnName.substring(0, argsStart);
+                } else {
+                    fnArgs = undefined;
                 }
+                let codeHash = await crypto.subtle.digest("SHA-512", (new TextEncoder()).encode(fnName));
+                fnName = new Uint8Array(codeHash);
             } else {
-                let fn = PluginManager.queryFunction(code);
-                if (typeof fn === "function") {
-                    fn();
-                    return;
+                let argsStart = code.indexOf("#");
+                if (argsStart > 0) {
+                    fnArgs = code.substring(argsStart + 1);
+                    fnName = code.substring(0, argsStart);
+                } else {
+                    fnArgs = undefined;
+                    fnName = code;
                 }
+            }
+
+            let fn = PluginManager.queryFunction(fnName);
+            if (typeof fn === "function") {
+                fnArgs = fnArgs?.split(/,|，/i) || [];
+                fn.apply(window, fnArgs);
+                return;
             }
 
             tip("未实现", {type:"warn", timeout:500});

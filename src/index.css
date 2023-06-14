@@ -1,5 +1,5 @@
 html {
-    font-size: 100%;
+    font-size: 90%;
 }
 body {
     --shadow-color: #bbb;
@@ -40,13 +40,13 @@ body {
     }
 }
 @media screen and (orientation:portrait) {
-    html,body {
+    html:not([d-pc]),body:not([d-pc]) {
         font-size: calc(100vw / var(--char-perline-portrait) * 2) !important;
         --content-char-perline: var(--char-perline-portrait);
     }
 }
 @media screen and (orientation:landscape) {
-    html,body {
+    html:not([d-pc]),body:not([d-pc]) {
         font-size: calc(100vw / var(--char-perline-landscape) * 2) !important;
         --content-char-perline: var(--char-perline-landscape);
     }
@@ -82,6 +82,8 @@ body * {
     position: relative;
     color: var(--content-text-color);
     background-color: var(--content-bg-color);
+} 
+:not([d-pc]) .content-box {
     font-size: calc(var(--content-view-width) / var(--content-char-perline) * 2);
 }
 .bottom-bar {
