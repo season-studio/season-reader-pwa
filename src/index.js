@@ -43,7 +43,7 @@ function lightOff() {
     }
     if (styleNode) {
         styleNode.setAttribute("d-theme-style", "light-off");
-        styleNode.innerHTML = "body { --content-text-color: #262626 !important; --content-bg-color: #000 !important; }";
+        styleNode.innerHTML = "body { --content-text-color: #464646 !important; --content-bg-color: #171717 !important; }";
         document.head?.appendChild(styleNode);
     }
 }
@@ -211,10 +211,11 @@ class ReaderApp extends React.Component {
 
         let entry = _e?.at(0);
         console.log("Resize", entry);
-        if (entry) {
+        let contentRect = $contentView?.parentElement?.getBoundingClientRect();
+        if (contentRect) {
             let oriStyles = String(document.body?.getAttribute("style")||"").split(";").filter(e => e && !e.startsWith("--content-view-width") && !e.startsWith("--content-view-height"));
-            oriStyles.push(`--content-view-width: ${entry.contentRect.width}`);
-            oriStyles.push(`--content-view-height: ${entry.contentRect.height}`);
+            oriStyles.push(`--content-view-width: ${contentRect.width}`);
+            oriStyles.push(`--content-view-height: ${contentRect.height}`);
             document.body?.setAttribute("style", oriStyles.join(";"));
             if ($contentView) {
                 let offset = Number($contentView.parentElement?.scrollTop)||0;
@@ -394,7 +395,14 @@ class ReaderApp extends React.Component {
                 // $contentView.scrollIntoView();
                 // $contentView.parentElement.scrollTop = _offset;
                 $contentView.style.display = "";
-                setImmediate(() => ($contentView.parentElement.scrollTop = _offset, r()));
+                setImmediate(() => {
+                    try { 
+                        $contentView.parentElement.scrollTop = _offset;
+                        $contentView.focus();
+                    } finally {
+                        r();
+                    }
+                });
                 await BookShelf.recordLocation(this.ebook, _index, _offset);
             } catch {
                 r();
@@ -605,7 +613,7 @@ class ReaderApp extends React.Component {
     render() {
         return (<>
             <div className="scroll-view" onClick={() => this.setState({showBar: !this.state.showBar})}>
-                <div ref={this.contentBox} className="content-box"></div>
+                <div ref={this.contentBox} className="content-box" tabindex="0"></div>
             </div>
             <audio ref={this.audioHolder} loop style={{display:"none"}}></audio>
             {this.state.inSpeak && <div className="bottom-bar" onClick={() => this.onCloseSpeaker()}>停止朗读</div>}

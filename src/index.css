@@ -7,11 +7,11 @@ body {
     --shadow-color-strong: #777;
     --global-font-family: -apple-system, Roboto, SegoeUI, 'Segoe UI', 'Helvetica Neue', Helvetica, 'Microsoft YaHei', 'Meiryo UI', Meiryo, Arial Unicode MS, sans-serif;
     --global-font-weight: 400;
-    --global-bg-color: #f3e3c3;
     --content-bg-color: #f3e3c3;
     --content-text-color: #000;
     --content-view-width: 100vw;
     --content-view-height: 100vh;
+    --global-bg-color: var(--content-bg-color);
 
     --bar-bg-color: #666;
     --bar-text-color: #fff;
@@ -82,6 +82,7 @@ body * {
     position: relative;
     color: var(--content-text-color);
     background-color: var(--content-bg-color);
+    outline: none;
 } 
 :not([d-pc]) .content-box {
     font-size: calc(var(--content-view-width) / var(--content-char-perline) * 2);
