@@ -15,60 +15,11 @@ import { ContextView } from "./components/contextView";
 import { SpeakerSelector } from "./components/speakerSelector";
 import { PluginManager } from "./components/pluginManager";
 import { brownNoice } from "./backgroundSound";
+import { timeoutConfirm } from "./components/timeoutConfirm";
+import { OptionsView, loadOptions } from "./components/options";
 
 const SpeakTextSplitor = /[,\."\?\!，。‘’“”？！…—\:：\n]/;
 const SpeakWatchDogOverflow = 9;
-
-function hideOn() {
-    let styleNode = document.querySelector('[d-theme-style="hide"]');
-    if (!styleNode) {
-        styleNode = document.createElement("style");
-    }
-    if (styleNode) {
-        styleNode.setAttribute("d-theme-style", "hide");
-        styleNode.innerHTML = "body { --content-text-color: #171717 !important; --content-bg-color: #212121 !important; }";
-        document.head?.appendChild(styleNode);
-    }
-}
-
-function hideOff() {
-    let styleNode = document.querySelector('[d-theme-style="hide"]');
-    styleNode?.remove();
-}
-
-function lightOff() {
-    let styleNode = document.querySelector('[d-theme-style="light-off"]');
-    if (!styleNode) {
-        styleNode = document.createElement("style");
-    }
-    if (styleNode) {
-        styleNode.setAttribute("d-theme-style", "light-off");
-        styleNode.innerHTML = "body { --content-text-color: #464646 !important; --content-bg-color: #171717 !important; }";
-        document.head?.appendChild(styleNode);
-    }
-}
-
-function lightOn() {
-    let styleNode = document.querySelector('[d-theme-style="light-off"]');
-    styleNode?.remove();
-}
-
-function fontSize(_size) {
-    console.log(this, arguments);
-    let styleNode = document.querySelector('[d-theme-style="font-size"]');``
-    if (_size) {
-        if (!styleNode) {
-            styleNode = document.createElement("style");
-        }
-        if (styleNode) {
-            styleNode.setAttribute("d-theme-style", "font-size");
-            styleNode.innerHTML = `body { font-size: ${_size} !important; } html { font-size: ${_size} !important; }`;
-            document.head?.appendChild(styleNode);
-        }
-    } else {
-        styleNode?.remove();
-    }
-}
 
 async function refresh() {
     let tipObj = undefined;
@@ -114,6 +65,7 @@ class ReaderApp extends React.Component {
     #speakAction;
     #observer;
     #keyTurnPage;
+    #turnLocker;
 
     constructor(_props) {
         super(_props);
@@ -123,6 +75,7 @@ class ReaderApp extends React.Component {
             showBookShelf: false,
             showContext: false,
             selectSpeaker: false,
+            showOptions: false
         };
 
         this.contentBox = React.createRef();
@@ -131,11 +84,6 @@ class ReaderApp extends React.Component {
 
         this.#observer = new ResizeObserver((e) => this.onResizeObserser(e));
 
-        PluginManager.registryFunction("font size", fontSize);
-        PluginManager.registryFunction("light on", lightOn);
-        PluginManager.registryFunction("light off", lightOff);
-        PluginManager.registryFunction("hide on", hideOn);
-        PluginManager.registryFunction("hide off", hideOff);
         PluginManager.registryFunction("refresh", refresh);
         PluginManager.registryFunction("fresh", fresh);
         PluginManager.registryFunction("resize", () => {
@@ -152,7 +100,11 @@ class ReaderApp extends React.Component {
         window.ZipLib = ZipLib;
         window.ReaderApp = this;
         window.$AppConfig = Configuration;
-        window.TipLib = TipLib;
+        window.TipLib = Object.assign({
+            timeoutConfirm
+        }, TipLib);
+
+        loadOptions();
 
         window.$dbg = {
             PluginManager
@@ -165,9 +117,9 @@ class ReaderApp extends React.Component {
             this.#contentShadowRoot = contentView.attachShadow({mode: "open"});
 
             let parent = contentView.parentElement;
-            if (parent?.parentElement) {
+            if (parent) {
                 this.onResizeObserser([{contentRect: parent.getBoundingClientRect()}]);
-                this.#observer?.observe(parent.parentElement);
+                this.#observer?.observe(parent);
             }
             
             window.addEventListener("get-ebook-password", this.onGetEBookPassword.bind(this));
@@ -200,32 +152,39 @@ class ReaderApp extends React.Component {
     }
 
     onResizeObserser(_e) {
-        let isPC = !/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
-        if (isPC) {
-            document.documentElement?.setAttribute("d-pc", "true");
-            document.body?.setAttribute("d-pc", "true");
-        } else {
-            document.documentElement?.removeAttribute("d-pc");
-            document.body?.removeAttribute("d-pc");
-        }
+        let contentRect = _e?.at(0)?.contentRect;
+        setImmediate(() => {
+            console.log("Resize", contentRect);
 
-        let entry = _e?.at(0);
-        console.log("Resize", entry);
-        let contentRect = $contentView?.parentElement?.getBoundingClientRect();
-        if (contentRect) {
-            let oriStyles = String(document.body?.getAttribute("style")||"").split(";").filter(e => e && !e.startsWith("--content-view-width") && !e.startsWith("--content-view-height"));
-            oriStyles.push(`--content-view-width: ${contentRect.width}`);
-            oriStyles.push(`--content-view-height: ${contentRect.height}`);
-            document.body?.setAttribute("style", oriStyles.join(";"));
-            if ($contentView) {
-                let offset = Number($contentView.parentElement?.scrollTop)||0;
-                $contentView.style.display = "none";
-                setImmediate(() => {
-                    $contentView.style.display = "";
-                    $contentView.parentElement && ($contentView.parentElement.scrollTop = offset);
-                });
+            let isPC = !/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
+            if (isPC) {
+                document.documentElement?.setAttribute("d-pc", "true");
+                document.body?.setAttribute("d-pc", "true");
+            } else {
+                document.documentElement?.removeAttribute("d-pc");
+                document.body?.removeAttribute("d-pc");
             }
-        }
+
+            // let contentRect = $contentView?.parentElement?.getBoundingClientRect();
+            if (contentRect) {
+                let oriStyles = String(document.body?.getAttribute("style")||"").split(";").filter(e => e && !e.startsWith("--content-view-width") && !e.startsWith("--content-view-height"));
+                oriStyles.push(`--content-view-width: ${contentRect.width}px`);
+                oriStyles.push(`--content-view-height: ${contentRect.height}px`);
+                document.body?.setAttribute("style", oriStyles.join(";"));
+                if ($contentView) {
+                    let offset = Number($contentView.parentElement?.scrollTop)||0;
+                    $contentView.style.display = "none";
+                    setImmediate(() => {
+                        $contentView.style.display = "";
+                        $contentView.parentElement && ($contentView.parentElement.scrollTop = offset);
+                    });
+                }
+            }
+        });
+    }
+
+    checkOnView() {
+        return !(this.state.showBookShelf || this.state.showContext || this.state.showOptions || this.state.selectSpeaker);
     }
 
     async loadSplashPage(_addHTML) {
@@ -280,7 +239,7 @@ class ReaderApp extends React.Component {
     }
 
     async onTouchEnd(e) {
-        if (!this.#speakAction) {
+        if (!this.#speakAction && this.checkOnView()) {
             let endY = e.changedTouches[0]?.clientY || 0;
             let deltaY = endY - this.#touchStartY;
             this.#touchStartY = 0;
@@ -367,21 +326,41 @@ class ReaderApp extends React.Component {
     }
 
     async showNextSection() {
-        let newIndex = this.#currentSectionIndex + 1;
-        if (newIndex < this.ebook.context.length) {
-            await this.showSection(newIndex);
-        } else {
-            tip("已浏览到最后一页", {type:"warn"});
+        if (!this.#turnLocker && this.checkOnView()) {
+            try {
+                this.#turnLocker = true;
+                let newIndex = this.#currentSectionIndex + 1;
+                if (newIndex < this.ebook.context.length) {
+                    if (await timeoutConfirm("即将进入下一章")) {
+                        await this.showSection(newIndex);
+                    }
+                } else {
+                    tip("已浏览到最后一页", {type:"warn"});
+                }
+            } finally {
+                this.#turnLocker = false;
+            }
         }
     }
 
-    async showPrevSection() {
-        let newIndex = this.#currentSectionIndex - 1;
-        if (newIndex >= 0) {
-            await this.showSection(newIndex);
-            setImmediate(() => $contentView.parentElement.scrollTop = $contentView.clientHeight);
-        } else {
-            tip("已浏览到第一页", {type:"warn"});
+    async showPrevSection(_gotoTop) {
+        if (!this.#turnLocker && this.checkOnView()) {
+            try {
+                this.#turnLocker = true;
+                let newIndex = this.#currentSectionIndex - 1;
+                if (newIndex >= 0) {
+                    if (await timeoutConfirm("即将进入上一章")) {
+                        await this.showSection(newIndex);
+                        (!_gotoTop) && setImmediate(() => $contentView.parentElement.scrollTop = $contentView.clientHeight);
+                    }
+                } else if ($contentView.parentElement.scrollTop > 0) {
+                    $contentView.parentElement.scrollTop = 0; 
+                } else {
+                    tip("已浏览到第一页", {type:"warn"});
+                }
+            } finally {
+                this.#turnLocker = false;
+            }
         }
     }
 
@@ -610,10 +589,22 @@ class ReaderApp extends React.Component {
         tip("未实现", {type:"warn"});
     }
 
+    onOptions() {
+        this.setState({showOptions:true});
+    }
+
     render() {
         return (<>
             <div className="scroll-view" onClick={() => this.setState({showBar: !this.state.showBar})}>
-                <div ref={this.contentBox} className="content-box" tabindex="0"></div>
+                <div ref={this.contentBox} className="content-box" tabIndex="0"></div>
+            </div>
+            <div className="turn-bar">
+                <div className="turn-button" onClick={() => this.showPrevSection(true)}>&lt;</div>
+                <div className="turn-button" onClick={() => this.showNextSection()}>&gt;</div>
+            </div>
+            <div className="turn-bar" d-bottom="1">
+                <div className="turn-button" onClick={() => this.showPrevSection(true)}>&lt;</div>
+                <div className="turn-button" onClick={() => this.showNextSection()}>&gt;</div>
             </div>
             <audio ref={this.audioHolder} loop style={{display:"none"}}></audio>
             {this.state.inSpeak && <div className="bottom-bar" onClick={() => this.onCloseSpeaker()}>停止朗读</div>}
@@ -624,11 +615,12 @@ class ReaderApp extends React.Component {
                     onShowContext={() => this.setState({showContext:true})}
                     onSpeakerControl={() => this.onStartSelectSpeaker()}
                     onJump={() => this.onJump()}
-                    onMore={() => this.onMore()}
+                    onOptions={() => this.onOptions()}
                 />}
             {this.state.showBookShelf && <BookShelfView onClose={() => this.setState({showBookShelf:false})} onOpen={(e) => this.onOpenFromShelf(e)} /> }
             {this.state.showContext && <ContextView onClose={() => this.setState({showContext:false})} onOpen={(index) => (this.setState({showContext:false}), this.showSection(index))} context={this.ebook.context} currentIndex={this.#currentSectionIndex} />}
             {this.state.selectSpeaker && <SpeakerSelector onClose={() => this.onCloseSpeaker()} onStart={(e) => this.onStartSpeaker(e)} />}
+            {this.state.showOptions && <OptionsView onClose={() => this.setState({showOptions:false})} />}
         </>);
     }
 }

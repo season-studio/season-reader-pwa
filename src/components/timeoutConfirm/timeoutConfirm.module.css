@@ -1,0 +1,57 @@
+.timeoutConfirmBox {
+    background-color: #fff;
+    color: #000;
+    padding: 1em;
+    border-radius: 0.5em;
+    position: fixed;
+    z-index: 9999;
+    top: calc(100vh / 2);
+    left: calc(100vw / 2);
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 0px 6px #666;
+
+    :global(.pblock) {
+        margin: 0;
+    }
+
+    :global(.progress-bar) {
+        width: 100%;
+        min-width: calc(100vw / 4);
+        height: 17px;
+        margin: 0.5em 0;
+        box-shadow: 2px 2px 4px #ccc inset;
+        padding: 3px;
+        border: solid 1px #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+    }
+
+    :global(.progress-track) {
+        background-color: deepskyblue;
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    :global(.cancel-button) {
+        position: absolute;
+        top: -1em;
+        right: -1em;
+        padding: 0.5em;
+        box-sizing: border-box;
+        border: none;
+        width: 2em;
+        height: 2em;
+        border-radius: 1em;
+        background-color: #000;
+        color: #fff;
+        opacity: 0.5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bolder;
+    }
+}
