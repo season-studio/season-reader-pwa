@@ -526,6 +526,7 @@ class ReaderApp extends React.Component {
 
     async onJump() {
         try {
+            window.dispatchEvent(new CustomEvent("reader-extern-jump-pre"));
             let code = String(await input({
                 title: "跳转",
                 tip: ""
